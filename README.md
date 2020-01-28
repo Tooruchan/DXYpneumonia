@@ -15,6 +15,6 @@ Linux 或 Windows + Python 3
 pip3 install -r requirements.txt
 ```
 
-3. 编辑 `dxy_phen.py`的第 10-14 行，第 100 行，加入 bot 需要使用的 Bot Token, API Hash, API ID, 频道 ID 等数据
+3. 编辑 `dxy_pneu.py`的第 10-14 行，第 100 行，加入 bot 需要使用的 Bot Token, API Hash, API ID, 频道 ID 等数据
 
 4. 使用 screen 或者 supervisor 或者 systemd 将 bot 加入服务中即可运行
