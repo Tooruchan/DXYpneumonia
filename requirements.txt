@@ -1,0 +1,5 @@
+requests==2.22.0
+bs4==0.0.1
+beautifulsoup4==4.8.1
+Pyrogram==0.16.0
+TgCrypto==1.2.0
