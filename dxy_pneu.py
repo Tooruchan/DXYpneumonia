@@ -4,11 +4,10 @@ import json
 import re
 from pyrogram import Client, InlineKeyboardButton, InlineKeyboardMarkup
 import time
-from datetime import datetime,timedelta,timezone
+from datetime import datetime, timedelta, timezone
 import pytz
 
 app = Client("pneumonia_bot",
-#             proxy=dict(hostname="127.0.0.1", port=1090),
              bot_token="",
              api_id=0,
              api_hash='')
@@ -16,26 +15,32 @@ app = Client("pneumonia_bot",
 headers = {
     'authority': '3g.dxy.cn',
     'user-agent':
-    'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N)',
     'cookie': 'DXY_USER_GROUP=34',
 }
+
+msgid = 0
+msg = None
+confirm_count = 0
+
 def get_data():
-    global date,newstr,province_str,app,timestamp,stat_data
+    global date, newstr, province_str, app, confirm_count, stat_data
     response = requests.get('https://3g.dxy.cn/newh5/view/pneumonia',
                             headers=headers)
     response.encoding = 'utf-8'
     soup = BeautifulSoup(response.text, 'html.parser')
-    province_rawdata = str(soup.find_all("script", id="getAreaStat")[0])[52:-20]
+    province_rawdata = str(soup.find_all("script",
+                                         id="getAreaStat")[0])[52:-20]
     stat_rawdata = str(soup.find_all("script",
-                                    id="getStatisticsService")[0])[70:-20]
+                                     id="getStatisticsService")[0])[70:-20]
     stat_data = json.loads(stat_rawdata)
     pro_data = json.loads(province_rawdata)
     timestamp = stat_data["modifyTime"] / 1000
     # print(timestamp)
-    loctime = datetime.fromtimestamp(timestamp).astimezone(timezone(timedelta(hours=8)))
+    loctime = datetime.fromtimestamp(timestamp).astimezone(
+        timezone(timedelta(hours=8)))
     dt = loctime.strftime("%Y-%m-%d %H:%M")
     date = '#2019新型冠状病毒\n截至 **{0}** (UTC +8)数据统计'.format(dt)
-    
     """
     新数据格式：
     {
@@ -64,7 +69,9 @@ def get_data():
     }
     """
     newstr = "\n在中国境内确诊 **{0}** 例，疑似 **{1}** 例，死亡 **{2}** 例，治愈 **{3}** 例。\n".format(
-        stat_data["confirmedCount"], stat_data["suspectedCount"], stat_data["deadCount"], stat_data["curedCount"])
+        stat_data["confirmedCount"], stat_data["suspectedCount"],
+        stat_data["deadCount"], stat_data["curedCount"])
+    confirm_count = stat_data["confirmedCount"]
     provinces = []
     for province in pro_data:
         #数据格式：
@@ -93,41 +100,53 @@ def get_data():
             [province_name, confirmed_count, suspected_count, dead_count])
         provinces.append(seperated_province)
     province_str = '\n'.join(provinces)
+
+
 def sendmsg():
-    global date,newstr,province_str,app,stat_data
+    global date, newstr, province_str, app, stat_data, msgid
     app.start()
-    app.send_photo(
-        -1,
+    msg = app.send_message(
+        -100,
         #请在此处自行填写频道/群组ID，可以通过 Group Bulter 的 /id 命令来查询。
-        photo=stat_data["dailyPic"],
-        caption='\n'.join([date, newstr, province_str]),
+        '\n'.join([date, newstr, province_str]),
         parse_mode='md',
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("数据来源：丁香园", url="https://3g.dxy.cn/newh5/view/pneumonia")]]))
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton(
+                "数据来源：丁香园", url="https://3g.dxy.cn/newh5/view/pneumonia")
+        ]]))
+    msgid = msg.message_id
     app.stop()
 
+
 def main():
-    global date,newstr,province_str,app,timestamp
+    global date, newstr, province_str, app, confirm_count
     #启动时先更新一次数据
     get_data()
+    oldcount = confirm_count
     sendmsg()
-    oldtimestamp = timestamp
     while True:
         #5分钟更新一次，这里的数据要改请按秒为单位计算。
-        time.sleep(60*60)
+        time.sleep(30 * 60)
         try:
             get_data()
-            if timestamp == oldtimestamp:
+            if confirm_count == oldcount:
                 # 数据相同，不更新
+                print("数据相同，不推送。")
                 pass
             else:
                 sendmsg()
+                print("数据出现变动，开始推送数据")
+                oldcount = confirm_count
         except KeyboardInterrupt as k:
+            print(k)
             quit()
         except Exception as e:
+            print(e)
+            quit()
             pass
         else:
             pass
 
-if __name__ =="__main__":
+
+if __name__ == "__main__":
     main()
